@@ -1,6 +1,6 @@
 class PersistentSettingsGrailsPlugin {
     // the plugin version
-    def version = "0.2"
+    def version = "0.3"
     // the version or versions of Grails the plugin is designed for
     def grailsVersion = "1.3.7 > *"
     // the other plugins this plugin depends on
@@ -11,11 +11,11 @@ class PersistentSettingsGrailsPlugin {
     ]
 
     // TODO Fill in these fields
-    def author = "Your name"
-    def authorEmail = ""
-    def title = "Plugin summary/headline"
+    def author = "Roman Belyakov"
+    def authorEmail = "propoff@gmail.com"
+    def title = "Grails persistent settings plugin"
     def description = '''\\
-Brief description of the plugin.
+Plugin manages persistent settings for the Grails applications 
 '''
 
     // URL to the plugin's documentation

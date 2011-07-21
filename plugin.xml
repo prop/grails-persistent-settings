@@ -1,8 +1,9 @@
 <plugin name='persistent-settings' version='0.3' grailsVersion='1.3.7 &gt; *'>
-  <author>Your name</author>
-  <title>Plugin summary/headline</title>
+  <author>Roman Belyakov</author>
+  <authorEmail>propoff@gmail.com</authorEmail>
+  <title>Grails persistent settings plugin</title>
   <description>\
-Brief description of the plugin.
+Plugin manages persistent settings for the Grails applications 
 </description>
   <documentation>http://grails.org/plugin/persistent-settings</documentation>
   <resources>
@@ -11,7 +12,6 @@ Brief description of the plugin.
     <resource>DataSource</resource>
     <resource>TestConfig</resource>
     <resource>UrlMappings</resource>
-    <resource>org.grails.persistentsettings.PersistentSettingController</resource>
     <resource>org.grails.persistentsettings.PersistentSetting</resource>
   </resources>
   <dependencies />

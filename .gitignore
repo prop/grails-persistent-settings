@@ -11,3 +11,5 @@ web-app/WEB-INF/classes
 target
 plugins
 stacktrace.log
+/*.zip
+/*.zip.sha1
