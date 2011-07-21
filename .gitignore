@@ -1,0 +1,12 @@
+.settings
+.classpath
+.project
+web-app/plugins
+web-app/WEB-INF/classes
+*.iml
+*.ipr
+*.iws
+*~
+*.#
+target
+plugins
