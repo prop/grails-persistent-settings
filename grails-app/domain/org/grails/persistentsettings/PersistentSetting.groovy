@@ -50,7 +50,7 @@ class PersistentSetting {
         }
     }
 
-    static Object getSettingValue (String n) {
+    static Object getValue (String n) {
         return findByName(n).value
     }
 

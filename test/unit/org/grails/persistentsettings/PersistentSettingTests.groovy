@@ -42,10 +42,10 @@ class PersistentSettingTests extends GrailsUnitTestCase {
         mockDomain(PersistentSetting)
         PersistentSetting.bootstrap()
         
-        assert PersistentSetting.getSettingValue("foo") == 1
-        assert PersistentSetting.getSettingValue("bar") == "blablabla"
-        assert PersistentSetting.getSettingValue("trueSetting") == true
-        assert PersistentSetting.getSettingValue("falseSetting") == false
+        assert PersistentSetting.getValue("foo") == 1
+        assert PersistentSetting.getValue("bar") == "blablabla"
+        assert PersistentSetting.getValue("trueSetting") == true
+        assert PersistentSetting.getValue("falseSetting") == false
     }
     
     void testInvalidSetting() {
