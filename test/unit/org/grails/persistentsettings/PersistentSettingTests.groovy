@@ -46,23 +46,37 @@ class PersistentSettingTests extends GrailsUnitTestCase {
         assert PersistentSetting.getValue("bar") == "blablabla"
         assert PersistentSetting.getValue("trueSetting") == true
         assert PersistentSetting.getValue("falseSetting") == false
+        assert PersistentSetting.findByName("foo").propertyName == "persistentSettings.foo"
+    }
+
+    void testConstraints() {
+        def testInstances = []
+        mockForConstraintsTests(PersistentSetting, testInstances)
+        def item = new PersistentSetting(
+            name: "someInvalidName",
+            value: "somevalue"
+        )
+        assertFalse item.validate()
+        assertEquals item.errors['name'], "setting.invalid.name"
+        item = new PersistentSetting(
+            name: "foo",
+            value: "somevalue"
+        )
+        assertFalse item.validate()
+        assertEquals item.errors['value'], "setting.invalid.type"
+
+        item = new PersistentSetting(
+            name: "foo",
+            value: 2
+        )
+        assertTrue item.validate()
+
+        
     }
     
     void testInvalidSetting() {
-        mockDomain(PersistentSetting)
-        def s = new PersistentSetting(
-            name: "someInvalidName",
-            value: "somevalue",
-            defaultValue: "somevalue",
-            type: String.class
-        )
-        assert s.save(flush: true) == null
         
-        assert (new PersistentSetting(
-            name: "foo",
-            value: "somevalue",
-            defaultValue: "somevalue",
-            type: Integer.class
-                )).save(flush: true) == null
+        mockDomain(PersistentSetting)
+        
     }
 }
