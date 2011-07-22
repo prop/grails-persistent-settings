@@ -46,7 +46,8 @@ class PersistentSettingTests extends GrailsUnitTestCase {
         assert PersistentSetting.getValue("bar") == "blablabla"
         assert PersistentSetting.getValue("trueSetting") == true
         assert PersistentSetting.getValue("falseSetting") == false
-        assert PersistentSetting.findByName("foo").propertyName == "persistentSettings.foo"
+        assert PersistentSetting.findByName("foo").propertyName == "org.grails.persistentsettings.foo.name"
+        assert PersistentSetting.findByName("foo").description == "org.grails.persistentsettings.foo.description"
     }
 
     void testConstraints() {
@@ -57,13 +58,13 @@ class PersistentSettingTests extends GrailsUnitTestCase {
             value: "somevalue"
         )
         assertFalse item.validate()
-        assertEquals item.errors['name'], "setting.invalid.name"
+        assertEquals item.errors['name'], "persistedsetting.name.invalid"
         item = new PersistentSetting(
             name: "foo",
             value: "somevalue"
         )
         assertFalse item.validate()
-        assertEquals item.errors['value'], "setting.invalid.type"
+        assertEquals item.errors['value'], "persistedsetting.type.invalid"
 
         item = new PersistentSetting(
             name: "foo",

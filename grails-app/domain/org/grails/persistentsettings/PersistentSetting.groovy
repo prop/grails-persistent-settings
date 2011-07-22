@@ -5,12 +5,16 @@ class PersistentSetting {
     String name
     Object value
     
-    static transients = ['propertyName']
+    static transients = ['propertyName', 'description']
     
     String propertyName
 
     String getPropertyName() {
-        return "persistentSettings." + name
+        return "org.grails.persistentsettings." + name + ".name"
+    }
+    
+    String getDescription() {
+        return "org.grails.persistentsettings." + name + ".description"
     }
     
     
@@ -18,14 +22,14 @@ class PersistentSetting {
 
         name unique: true, validator: { val, obj ->
             if (!CH.config.persistentSettings.containsKey(val)) {
-                return 'setting.invalid.name'
+                return 'persistedsetting.name.invalid'
             }
             return true
         }
         value nullable: true, validator: { val, obj ->
             def s = CH.config.persistentSettings[obj.name]
             if (val.getClass() != s.type) {
-                return "setting.invalid.type"
+                return "persistedsetting.type.invalid"
             }
             if (s.validator != [:]) {
                 return s.validator.call(val)
