@@ -28,7 +28,7 @@ class PersistentSetting {
         }
         value nullable: true, validator: { val, obj ->
             def s = CH.config.persistentSettings[obj.name]
-            if (val.getClass() != s.type) {
+            if (val != null && val.getClass() != s.type) {
                 return "persistedsetting.type.invalid"
             }
             if (s.validator != [:]) {
@@ -39,11 +39,12 @@ class PersistentSetting {
     }
 
     static void bootstrap () {
-        if (!CH.config.persistentSettings) return
+        def ps = CH.config.persistentSettings
+        if (!ps) return
         
-        (CH.config.persistentSettings.collect{k,v -> k} -
+        (ps.collect{k,v -> k} -
          PersistentSetting.list().collect{it.name}).each{
-            def s = CH.config.persistentSettings[it]
+            def s = ps[it]
             new PersistentSetting(name: it,
                                   value: s.defaultValue,
                                  ).save(failOnError: true, flush: true)
