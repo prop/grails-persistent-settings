@@ -7,7 +7,7 @@ persistentSettings {
     bar {
         defaultValue = "blablabla"
         type = String.class
-        validator = {println it; return it.value  ==~ /(bla)+/}
+        validator = {return it.value  ==~ /(bla)+/}
     }
     
     trueSetting {
