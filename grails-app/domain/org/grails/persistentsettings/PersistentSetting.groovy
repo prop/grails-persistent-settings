@@ -79,10 +79,6 @@ class PersistentSetting {
         sValue nullable: true
     }
     
-    static mapping = {
-        sValue column: 's_value'
-    }
-
     static void bootstrap () {
         if (!configObject) return
         
