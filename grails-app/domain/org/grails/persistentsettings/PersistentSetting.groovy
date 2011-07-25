@@ -11,7 +11,7 @@ class PersistentSetting {
      */
     String sValue
     
-    static transients = ['propertyName', 'description', 'value', 'oValue']
+    static transients = ['propertyName', 'description', 'value', 'oValue', 'type']
     
     /**
      * Name of the property for i18n
@@ -53,6 +53,9 @@ class PersistentSetting {
         return "org.grails.persistentsettings." + name + ".description"
     }
     
+    Class getType() {
+        return configObject[name].type
+    }
     private static ConfigObject configObject = CH.config.persistentSettings
     
     static constraints = {
@@ -99,7 +102,7 @@ class PersistentSetting {
         }
     }
 
-    static Object setValue (String name, Object value) {
+    static PersistentSetting setValue (String name, Object value) {
             def setting = findByName(name)
             if (!setting) {
                 setting = new PersistentSetting(name: name, value: value)
@@ -107,8 +110,15 @@ class PersistentSetting {
             else setting.value = value
             if (!setting.save(flush: true)) {
                 println "Errors: ${setting.errors}"
-                throw new RuntimeException ('Could not save PersistentSetting')
+                // throw new RuntimeException ('Could not save PersistentSetting')
             }
+            return setting
+    }
+
+    static PersistentSetting setValue (String name, String value) {
+            def setting = findByName(name)
+            def type = configObject[name].type
+            return setValue(name, (Object) value.asType(type))
     }
 
 }
