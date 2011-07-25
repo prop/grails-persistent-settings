@@ -1,6 +1,5 @@
 package org.grails.persistentsettings
 import org.codehaus.groovy.grails.commons.ConfigurationHolder as CH
-
 class PersistentSetting {
     /**
      * A name of the setting
@@ -8,9 +7,9 @@ class PersistentSetting {
     String name
     
     /**
-     * Serialized value
+     * Serialized value (Grails does not persist private fields by default)
      */
-    private String sValue
+    String sValue
     
     static transients = ['propertyName', 'description', 'value', 'oValue']
     
@@ -25,6 +24,7 @@ class PersistentSetting {
     Object oValue = null
     
     Object value
+    
     
     Object getValue() {
         if (name == null || sValue == null) return null
@@ -75,8 +75,13 @@ class PersistentSetting {
             }
             return true
         }
+        
+        sValue nullable: true
     }
     
+    static mapping = {
+        sValue column: 's_value'
+    }
 
     static void bootstrap () {
         if (!configObject) return
