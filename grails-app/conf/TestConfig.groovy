@@ -17,6 +17,14 @@ persistentSettings {
 
     falseSetting {
         defaultValue = false
-        type = Boolean.class
+        type = Boolean.class        
+    }
+    
+    listSetting {
+        defaultValue = "first"
+        type = String.class
+        advanced {
+            list = ["first", "second", "third"]
+        }
     }
 }

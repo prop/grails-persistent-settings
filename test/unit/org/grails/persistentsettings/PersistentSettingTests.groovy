@@ -35,7 +35,7 @@ class PersistentSettingTests extends GrailsUnitTestCase {
         mockDomain(PersistentSetting)
         PersistentSetting.bootstrap()
         
-        assert PersistentSetting.list().size() == 4
+        assert PersistentSetting.list().size() == 5
     }
 
     void testTypes() {
@@ -48,6 +48,7 @@ class PersistentSettingTests extends GrailsUnitTestCase {
         assert PersistentSetting.getValue("falseSetting") == false
         assert PersistentSetting.findByName("foo").propertyName == "org.grails.persistentsettings.foo.name"
         assert PersistentSetting.findByName("foo").description == "org.grails.persistentsettings.foo.description"
+        assert PersistentSetting.getValue("listSetting") == "first"
     }
 
     void testConstraints() {
@@ -84,14 +85,27 @@ class PersistentSettingTests extends GrailsUnitTestCase {
             value: null
         )
         assertTrue item.validate()
+
+        item = new PersistentSetting(
+            name: "listSetting",
+            value: "second"
+        )
+        assertTrue item.validate()
+
+        item = new PersistentSetting(
+            name: "listSetting",
+            value: "invalid"
+        )
+        assertFalse item.validate()
     }
     
     void testSetting() {
         mockDomain(PersistentSetting)
-        PersistentSetting.setValue("foo", 42)
+        PersistentSetting.bootstrap()
+        assertFalse PersistentSetting.setValue("foo", 42).hasErrors()
         assertEquals PersistentSetting.getValue("foo"), 42
 
-        PersistentSetting.setValue("trueSetting", false)
+        assertFalse PersistentSetting.setValue("trueSetting", false).hasErrors()
         assertEquals PersistentSetting.getValue("trueSetting"), false
         
         def ok = false, value = null
@@ -102,20 +116,18 @@ class PersistentSettingTests extends GrailsUnitTestCase {
             ok = true
         }
         assertTrue ok
-        ok = false
-        try {
-            PersistentSetting.setValue("invalidSetting", "somevalue")
-        } catch (RuntimeException e) {
-            ok = true
-        }
-        assertTrue ok
-        ok = false
-        try {
-            PersistentSetting.setValue("foo", "someString")
-        } catch (RuntimeException e) {
-            ok = true
-        }
-        assertTrue ok
+
+        assertTrue PersistentSetting.setValue("invalidSetting", "somevalue").hasErrors()
+
+        assertTrue PersistentSetting.setValue("foo", "someString").hasErrors()
+        
+        def err = PersistentSetting.setValue("listSetting", "third").errors
+        println "Error: ${err}"
+        
+        
+        assertEquals PersistentSetting.getValue("listSetting"), "third"
+        
+        assertTrue PersistentSetting.setValue("listSetting", "fifth").hasErrors()
     }
     
 }

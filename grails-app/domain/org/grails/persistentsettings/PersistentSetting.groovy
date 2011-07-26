@@ -11,7 +11,13 @@ class PersistentSetting {
      */
     String sValue
     
-    static transients = ['propertyName', 'description', 'value', 'oValue', 'type']
+    static transients = ['propertyName',
+                         'description',
+                         'value',
+                         'oValue',
+                         'type',
+                         'advanced'
+                        ]
     
     /**
      * Name of the property for i18n
@@ -52,11 +58,17 @@ class PersistentSetting {
     String getDescription() {
         return "org.grails.persistentsettings." + name + ".description"
     }
+
+    ConfigObject getAdvanced() {
+        return configObject[name].advanced
+    }
     
     Class getType() {
-        return configObject[name].type
+        def type = configObject[name].type
+        if (type.getClass() == Class.class) return type
+        return null
     }
-    private static ConfigObject configObject = CH.config.persistentSettings
+    private static final ConfigObject configObject = CH.config.persistentSettings
     
     static constraints = {
 
@@ -68,10 +80,21 @@ class PersistentSetting {
             return true
         }
         value nullable: true, validator: { val, obj ->
+            if (!configObject.containsKey(obj.name)) {
+                return 'persistedsetting.name.invalid'
+            }
+            
             def s = configObject[obj.name]
             if (obj.oValue != null && obj.oValue.getClass() != s.type) {
                 return "persistedsetting.type.invalid"
             }
+            
+            def list = obj.getAdvanced().list
+            if (list && list.size() > 0 && obj.value != null &&
+                !list.contains(obj.oValue)) {
+                return "persistedsetting.value.invalid"
+            }
+        
             // Calling custom validator
             if (s.validator != [:]) {
                 return s.validator.call(val)
@@ -84,7 +107,6 @@ class PersistentSetting {
     
     static void bootstrap () {
         if (!configObject) return
-        
         (configObject.collect{k,v -> k} -
          PersistentSetting.list().collect{it.name}).each{
             def s = configObject[it]
@@ -108,17 +130,29 @@ class PersistentSetting {
                 setting = new PersistentSetting(name: name, value: value)
             }
             else setting.value = value
-            if (!setting.save(flush: true)) {
-                println "Errors: ${setting.errors}"
+            setting.save()
+            // if (!setting.save(flush: true)) {
+            //     println "Erors: ${setting.errors}"
                 // throw new RuntimeException ('Could not save PersistentSetting')
-            }
+            // }
             return setting
     }
 
     static PersistentSetting setValue (String name, String value) {
             def setting = findByName(name)
-            def type = configObject[name].type
-            return setValue(name, (Object) value.asType(type))
+            if (!setting) {
+                setting = new PersistentSetting()
+                setting.errors.reject('persistedsetting.name.invalid')
+                return setting
+            }
+            def oValue
+            try {
+                oValue = value.asType(setting.type)
+            } catch (Exception e) {
+                setting.errors.reject('persistedsetting.type.invalid')
+                return setting
+            }
+            return setValue(name, (Object) oValue)
     }
 
 }
