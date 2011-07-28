@@ -19,37 +19,37 @@ class PersistentSetting {
                          'advanced'
                         ]
     
-    /**
-     * Name of the property for i18n
-     */
-    String propertyName
+                        /**
+                         * Name of the property for i18n
+                         */
+                        String propertyName
 
-    /**
-     * A copy of the original value
-     */
-    Object oValue = null
+                        /**
+                         * A copy of the original value
+                         */
+                        Object oValue = null
     
-    Object value
+                        Object value
     
     
-    Object getValue() {
-        if (name == null || sValue == null) return null
-        if (oValue != null) return oValue
-        try {
-            def type = (Class) configObject[name].type
-            if (type == Boolean.class) return sValue == "true"
-            def res = sValue.asType(type)
-            return res
-        } catch(Exception e) {
-            return sValue
-        }
-    }
+                        Object getValue() {
+                            if (name == null || sValue == null) return null
+                            if (oValue != null) return oValue
+                            try {
+                                def type = (Class) configObject[name].type
+                                if (type == Boolean.class) return sValue == "true"
+                                def res = sValue.asType(type)
+                                return res
+                            } catch(Exception e) {
+                                return sValue
+                            }
+                        }
 
-    void setValue(Object v) {
-        oValue = v
-        if (v == null) sValue = null
-        else sValue = v.toString()
-    }
+                        void setValue(Object v) {
+                            oValue = v
+                            if (v == null) sValue = null
+                            else sValue = v.toString()
+                        }
     
     String getPropertyName() {
         return "org.grails.persistentsettings." + name + ".name"
@@ -125,34 +125,34 @@ class PersistentSetting {
     }
 
     static PersistentSetting setValue (String name, Object value) {
-            def setting = findByName(name)
-            if (!setting) {
-                setting = new PersistentSetting(name: name, value: value)
-            }
-            else setting.value = value
-            setting.save()
-            // if (!setting.save(flush: true)) {
-            //     println "Erors: ${setting.errors}"
-                // throw new RuntimeException ('Could not save PersistentSetting')
-            // }
-            return setting
+        def setting = findByName(name)
+        if (!setting) {
+            setting = new PersistentSetting(name: name, value: value)
+        }
+        else setting.value = value
+        setting.save()
+        // if (!setting.save(flush: true)) {
+        //     println "Erors: ${setting.errors}"
+        // throw new RuntimeException ('Could not save PersistentSetting')
+        // }
+        return setting
     }
 
     static PersistentSetting setValue (String name, String value) {
-            def setting = findByName(name)
-            if (!setting) {
-                setting = new PersistentSetting()
-                setting.errors.reject('persistedsetting.name.invalid')
-                return setting
-            }
-            def oValue
-            try {
-                oValue = value.asType(setting.type)
-            } catch (Exception e) {
-                setting.errors.reject('persistedsetting.type.invalid')
-                return setting
-            }
-            return setValue(name, (Object) oValue)
+        def setting = new PersistentSetting()
+        def oValue
+        if (!configObject.containsKey(name)) {
+            setting.errors.reject('persistedsetting.name.invalid')
+            return setting
+        }
+        try {
+            def type = configObject[name].type
+            oValue = value.asType(type)
+        } catch (Exception e) {
+            setting.errors.reject('persistedsetting.type.invalid')
+            return setting
+        }
+        return setValue(name, (Object) oValue)
     }
 
 }
