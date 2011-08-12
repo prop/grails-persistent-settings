@@ -50,6 +50,10 @@ class PersistentSetting {
                             if (v == null) sValue = null
                             else sValue = v.toString()
                         }
+
+    static mapping = {
+        sValue  type: 'text'
+    }
     
     String getPropertyName() {
         return "org.grails.persistentsettings." + name + ".name"

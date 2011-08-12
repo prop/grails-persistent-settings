@@ -1,4 +1,4 @@
-<plugin name='persistent-settings' version='0.7' grailsVersion='1.3.7 &gt; *'>
+<plugin name='persistent-settings' version='0.8' grailsVersion='1.3.7 &gt; *'>
   <author>Roman Belyakov</author>
   <authorEmail>propoff@gmail.com</authorEmail>
   <title>Grails persistent settings plugin</title>
