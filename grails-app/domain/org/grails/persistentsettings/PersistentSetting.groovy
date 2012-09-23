@@ -30,9 +30,8 @@ class PersistentSetting {
                         Object oValue = null
     
                         Object value
-    
-    
-                        Object getValue() {
+
+                        public Object getValue() {
                             if (name == null || sValue == null) return null
                             if (oValue != null) return oValue
                             try {
@@ -45,7 +44,7 @@ class PersistentSetting {
                             }
                         }
 
-                        void setValue(Object v) {
+                        public void setValue(Object v) {
                             oValue = v
                             if (v == null) sValue = null
                             else sValue = v.toString()
@@ -83,7 +82,8 @@ class PersistentSetting {
             }
             return true
         }
-        value nullable: true, validator: { val, obj ->
+        
+        value nullable: true, bindable: true, validator: { val, obj ->
             if (!configObject.containsKey(obj.name)) {
                 return 'persistedsetting.name.invalid'
             }
@@ -110,13 +110,23 @@ class PersistentSetting {
     }
     
     static void bootstrap () {
+        def originalMapConstructor = PersistentSetting.metaClass.retrieveConstructor(Map);
+
+        PersistentSetting.metaClass.constructor = { Map map ->
+            if (map.size() > 0) {
+                throw new RuntimeException("Passing params to constructor not supported");
+            }
+            instance;
+        }
+        
         if (!configObject) return
         (configObject.collect{k,v -> k} -
          PersistentSetting.list().collect{it.name}).each{
             def s = configObject[it]
-            new PersistentSetting(name: it,
-                                  value: s.defaultValue,
-                                 ).save(failOnError: true, flush: true)
+            def ps = new PersistentSetting();
+            ps.name = it;
+            ps.value = s.defaultValue;
+            ps.save(failOnError: true, flush: true);
         }
     }
 
@@ -131,7 +141,9 @@ class PersistentSetting {
     static PersistentSetting setValue (String name, Object value) {
         def setting = findByName(name)
         if (!setting) {
-            setting = new PersistentSetting(name: name, value: value)
+            setting = new PersistentSetting();
+            setting.name = name;
+            setting.value = value;
         }
         else setting.value = value
         setting.save()
@@ -158,5 +170,5 @@ class PersistentSetting {
         }
         return setValue(name, (Object) oValue)
     }
-
 }
+

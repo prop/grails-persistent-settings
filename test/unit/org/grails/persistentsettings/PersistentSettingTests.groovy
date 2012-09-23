@@ -54,48 +54,47 @@ class PersistentSettingTests extends GrailsUnitTestCase {
     void testConstraints() {
         def testInstances = []
         mockForConstraintsTests(PersistentSetting, testInstances)
-        def item = new PersistentSetting(
-            name: "someInvalidName",
-            value: "somevalue"
-        )
+        def item = new PersistentSetting();
+        
+        item.name = "someInvalidName";
+        item.value = "somevalue";
+        
         assertFalse item.validate()
         assertEquals item.errors['name'], "persistedsetting.name.invalid"
-        item = new PersistentSetting(
-            name: "foo",
-            value: "somevalue"
-        )
+
+        item = new PersistentSetting();
+        item.name = "foo";
+        item.value = "somevalue";
+
         assertFalse item.validate()
         assertEquals item.errors['value'], "persistedsetting.type.invalid"
 
-        item = new PersistentSetting(
-            name: "trueSetting",
-            value: 7
-        )
+        item = new PersistentSetting();
+        item.name = "trueSetting";
+        item.value = 7;
+
         assertFalse item.validate()
         assertEquals item.errors['value'], "persistedsetting.type.invalid"
 
-        item = new PersistentSetting(
-            name: "foo",
-            value: 2
-        )
+        item = new PersistentSetting();
+        item.name = "foo";
+        item.value = 2;
+        assertTrue item.validate();
+
+        item = new PersistentSetting();
+        item.name = "foo";
+        item.value = null;
+
         assertTrue item.validate()
 
-        item = new PersistentSetting(
-            name: "foo",
-            value: null
-        )
+        item = new PersistentSetting();
+        item.name = "listSetting";
+        item.value = "second";
         assertTrue item.validate()
 
-        item = new PersistentSetting(
-            name: "listSetting",
-            value: "second"
-        )
-        assertTrue item.validate()
-
-        item = new PersistentSetting(
-            name: "listSetting",
-            value: "invalid"
-        )
+        item = new PersistentSetting();
+        item.name = "listSetting";
+        item.value = "invalid";
         assertFalse item.validate()
     }
     
