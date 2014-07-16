@@ -60,21 +60,21 @@ class PersistentSettingTests extends GrailsUnitTestCase {
         item.value = "somevalue";
         
         assertFalse item.validate()
-        assertEquals item.errors['name'], "persistedsetting.name.invalid"
+        assertEquals item.errors['name'], "persistentsettings.name.invalid"
 
         item = new PersistentSetting();
         item.name = "foo";
         item.value = "somevalue";
 
         assertFalse item.validate()
-        assertEquals item.errors['value'], "persistedsetting.type.invalid"
+        assertEquals item.errors['value'], "persistentsettings.type.invalid"
 
         item = new PersistentSetting();
         item.name = "trueSetting";
         item.value = 7;
 
         assertFalse item.validate()
-        assertEquals item.errors['value'], "persistedsetting.type.invalid"
+        assertEquals item.errors['value'], "persistentsettings.type.invalid"
 
         item = new PersistentSetting();
         item.name = "foo";
