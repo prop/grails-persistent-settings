@@ -17,10 +17,10 @@ grails.project.dependency.resolution = {
   }
 
   plugins {
+    build(":release:2.2.1") {
+      export = false
+    }
     runtime ":hibernate:$grailsVersion"
-    runtime ":maven-publisher:0.8.1"
-
-    build ":tomcat:$grailsVersion"
   }
 
   dependencies {
