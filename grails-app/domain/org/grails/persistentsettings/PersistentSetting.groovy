@@ -57,6 +57,7 @@ class PersistentSetting {
   }
 
   static mapping = {
+    datasource 'ALL'
     sValue type: 'text'
     sort 'name'
     cache true
