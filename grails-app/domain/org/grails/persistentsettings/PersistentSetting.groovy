@@ -1,6 +1,6 @@
 package org.grails.persistentsettings
 
-import org.codehaus.groovy.grails.commons.ConfigurationHolder as CH
+import grails.util.Holders
 
 class PersistentSetting {
 
@@ -41,7 +41,7 @@ class PersistentSetting {
     if (name == null || sValue == null) return null
     if (oValue != null) return oValue
     try {
-      def type = (Class) configObject[name].type
+      def type = (Class) getConfig()[name].type
       if (type == Boolean.class) return sValue == "true"
       def res = sValue.asType(type)
       return res
@@ -72,33 +72,31 @@ class PersistentSetting {
   }
 
   ConfigObject getAdvanced() {
-    return configObject[name].advanced
+    return getConfig()[name].advanced
   }
 
   Class getType() {
-    def type = configObject[name].type
+    def type = getConfig()[name].type
     if (type.getClass() == Class.class) return type
     return null
   }
 
-  private static final ConfigObject configObject = CH.config.persistentSettings
-
   static constraints = {
 
     name nullable: false, unique: true, validator: { val, obj ->
-      // name is invalid if configObject does not contain it
-      if (!configObject.containsKey(val)) {
+      // name is invalid if getConfig() does not contain it
+      if (!getConfig().containsKey(val)) {
         return 'persistentsettings.name.invalid'
       }
       return true
     }
 
     value nullable: true, bindable: true, validator: { val, obj ->
-      if (!configObject.containsKey(obj.name)) {
+      if (!getConfig().containsKey(obj.name)) {
         return 'name.invalid'
       }
 
-      def s = configObject[obj.name]
+      def s = getConfig()[obj.name]
       if (obj.oValue != null && obj.oValue.getClass() != s.type) {
         return "persistentsettings.type.invalid"
       }
@@ -131,18 +129,18 @@ class PersistentSetting {
       instance;
     }
 
-    if (!configObject) return
+    if (!getConfig()) return
 
-    (configObject.collect { k, v -> k } - PersistentSetting.list().collect { it.name }).each {
+    (getConfig().collect { k, v -> k } - PersistentSetting.list().collect { it.name }).each {
       try {
-        def s = configObject[it]
+        def s = getConfig()[it]
         def ps = new PersistentSetting();
         ps.name = it;
         ps.value = s.defaultValue;
         ps.isHidden = s.hidden ?: false
         ps.save(failOnError: true, flush: true);
       } catch (Exception e) {
-        print "$it, ${configObject[it]}: " + e.message
+        print "$it, ${getConfig()[it]}: " + e.message
       }
     }
   }
@@ -178,12 +176,12 @@ class PersistentSetting {
   static PersistentSetting setValue(String name, String value) {
     def setting = new PersistentSetting()
     def oValue
-    if (!configObject.containsKey(name)) {
+    if (!getConfig().containsKey(name)) {
       setting.errors.reject('persistentsettings.name.invalid')
       return setting
     }
     try {
-      def type = configObject[name].type
+      def type = getConfig()[name].type
       oValue = value.asType(type)
     } catch (Exception e) {
       println "Errors: ${e.message}"
@@ -195,12 +193,16 @@ class PersistentSetting {
 
   static namedQueries = {
     existingOnly {
-      'in'("name", configObject.collect { it.key }.toArray())
+      'in'("name", getConfig().collect { it.key }.toArray())
     }
     visibleOnly {
-      'in'("name", configObject.collect { it.key }.toArray())
+      'in'("name", getConfig().collect { it.key }.toArray())
       eq 'isHidden', false
     }
+  }
+
+  private static def getConfig() {
+    return Holders.config.persistentSettings;
   }
 }
 
