@@ -41,7 +41,7 @@ class PersistentSetting {
     if (name == null || sValue == null) return null
     if (oValue != null) return oValue
     try {
-      def type = (Class) getConfig()[name].type
+      def type = (Class) PersistentSetting.getConfig()[name].type
       if (type == Boolean.class) return sValue == "true"
       def res = sValue.asType(type)
       return res
@@ -72,11 +72,11 @@ class PersistentSetting {
   }
 
   ConfigObject getAdvanced() {
-    return getConfig()[name].advanced
+    return PersistentSetting.getConfig()[name].advanced
   }
 
   Class getType() {
-    def type = getConfig()[name].type
+    def type = PersistentSetting.getConfig()[name].type
     if (type.getClass() == Class.class) return type
     return null
   }
@@ -85,18 +85,18 @@ class PersistentSetting {
 
     name nullable: false, unique: true, validator: { val, obj ->
       // name is invalid if getConfig() does not contain it
-      if (!getConfig().containsKey(val)) {
+      if (!PersistentSetting.getConfig().containsKey(val)) {
         return 'persistentsettings.name.invalid'
       }
       return true
     }
 
     value nullable: true, bindable: true, validator: { val, obj ->
-      if (!getConfig().containsKey(obj.name)) {
+      if (!PersistentSetting.getConfig().containsKey(obj.name)) {
         return 'name.invalid'
       }
 
-      def s = getConfig()[obj.name]
+      def s = PersistentSetting.getConfig()[obj.name]
       if (obj.oValue != null && obj.oValue.getClass() != s.type) {
         return "persistentsettings.type.invalid"
       }
@@ -129,18 +129,18 @@ class PersistentSetting {
       instance;
     }
 
-    if (!getConfig()) return
+    if (!PersistentSetting.getConfig()) return
 
-    (getConfig().collect { k, v -> k } - PersistentSetting.list().collect { it.name }).each {
+    (PersistentSetting.getConfig().collect { k, v -> k } - PersistentSetting.list().collect { it.name }).each {
       try {
-        def s = getConfig()[it]
+        def s = PersistentSetting.getConfig()[it]
         def ps = new PersistentSetting();
         ps.name = it;
         ps.value = s.defaultValue;
         ps.isHidden = s.hidden ?: false
         ps.save(failOnError: true, flush: true);
       } catch (Exception e) {
-        print "$it, ${getConfig()[it]}: " + e.message
+        print "$it, ${PersistentSetting.getConfig()[it]}: " + e.message
       }
     }
   }
@@ -176,12 +176,12 @@ class PersistentSetting {
   static PersistentSetting setValue(String name, String value) {
     def setting = new PersistentSetting()
     def oValue
-    if (!getConfig().containsKey(name)) {
+    if (!PersistentSetting.getConfig().containsKey(name)) {
       setting.errors.reject('persistentsettings.name.invalid')
       return setting
     }
     try {
-      def type = getConfig()[name].type
+      def type = PersistentSetting.getConfig()[name].type
       oValue = value.asType(type)
     } catch (Exception e) {
       println "Errors: ${e.message}"
@@ -193,7 +193,7 @@ class PersistentSetting {
 
   static namedQueries = {
     existingOnly {
-      'in'("name", getConfig().collect { it.key }.toArray())
+      'in'("name", PersistentSetting.getConfig().collect { it.key }.toArray())
     }
     visibleOnly {
       'in'("name", getConfig().collect { it.key }.toArray())
