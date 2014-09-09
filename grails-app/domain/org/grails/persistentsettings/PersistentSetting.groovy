@@ -197,7 +197,10 @@ class PersistentSetting {
     }
     visibleOnly {
       'in'("name", getConfig().collect { it.key }.toArray())
-      eq 'isHidden', false
+      or {
+        eq 'isHidden', false
+        isNull 'isHidden'
+      }
     }
   }
 
