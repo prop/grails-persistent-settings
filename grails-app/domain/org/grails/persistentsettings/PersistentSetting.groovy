@@ -203,7 +203,7 @@ class PersistentSetting {
       }
     }
     existingAndSafeOnly {
-      'in'("name", PersistentSetting.getConfig().collect { it.key }.findAll { it.safe == true }.toArray())
+      'in'("name", PersistentSetting.getConfig().findAll { it.value.safe == true }.collect { it.key }.toArray())
     }
   }
 
