@@ -202,6 +202,9 @@ class PersistentSetting {
         isNull 'isHidden'
       }
     }
+    existingAndSafeOnly {
+      'in'("name", PersistentSetting.getConfig().collect { it.key }.findAll { it.safe == true }.toArray())
+    }
   }
 
   private static def getConfig() {
