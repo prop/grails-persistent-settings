@@ -122,8 +122,8 @@ class PersistentSetting {
     module nullable: true
   }
 
-  static List<PersistentSetting> firstCleanBootstrap(String moduleName) {
-    deleteStalePSFromDomain(moduleName)
+  static List<PersistentSetting> firstCleanBootstrap(String moduleName = null) {
+    PersistentSetting.executeUpdate("delete from PersistentSetting ps")
     return doBootstrap(getConfig(), moduleName)
   }
 
@@ -188,7 +188,7 @@ class PersistentSetting {
       PersistentSetting.executeUpdate("delete from PersistentSetting ps where ps.module=:moduleName",
           [moduleName: moduleName])
     } else {
-      PersistentSetting.executeUpdate("delete from PersistentSetting")
+      PersistentSetting.executeUpdate("delete from PersistentSetting ps where ps.module is null")
     }
   }
 
@@ -208,22 +208,24 @@ class PersistentSetting {
 
   protected static List<PersistentSetting> doBootstrap(configs,
                                                        String moduleName = null, boolean failOnError = false) {
-    if (!configs) return
+    if (!configs) return []
 
     List<PersistentSetting> created = []
 
-    def allPs = PersistentSetting.list()
-    if (moduleName) {
-      allPs = allPs.findAll({
-        it.module == moduleName
-      })
-    }
+    def allPs = PersistentSetting.list().findAll({
+      it.module == moduleName
+    })
+
     (configs.collect { k, v -> k } - allPs.collect { it.name }).each {
       try {
         def s = configs[it]
 
         def name = it
-        PersistentSetting ps = toPersistentSetting(name, s, moduleName ?: s.module)
+        PersistentSetting ps = new PersistentSetting()
+        ps.name = name
+        ps.value = s.defaultValue
+        ps.module = moduleName ?: ((s.module instanceof String)? s.module : null)
+        ps.isHidden = s.hidden ?: false
         ps.save(failOnError: true, flush: true);
         created.add(ps)
       } catch (Exception e) {
@@ -237,14 +239,6 @@ class PersistentSetting {
     return created
   }
 
-  private static PersistentSetting toPersistentSetting(String name, config, String module) {
-    def ps = new PersistentSetting();
-    ps.name = name;
-    ps.value = config.defaultValue;
-    ps.module = module
-    ps.isHidden = config.hidden ?: false
-    ps
-  }
 
   static Object getValue(String name) {
     try {
