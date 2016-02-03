@@ -269,21 +269,23 @@ class PersistentSetting {
   }
 
   static PersistentSetting setValue(String name, String value) {
-    def setting = new PersistentSetting()
-    def oValue
-    if (!PersistentSetting.getConfig().containsKey(name)) {
-      setting.errors.reject('persistentsettings.name.invalid')
-      return setting
+    synchronized (psStorageSyncObj){
+      def setting = new org.grails.persistentsettings.PersistentSetting()
+      def oValue
+      if (!org.grails.persistentsettings.PersistentSetting.getConfig().containsKey(name)) {
+        setting.errors.reject('persistentsettings.name.invalid')
+        return setting
+      }
+      try {
+        def type = org.grails.persistentsettings.PersistentSetting.getConfig()[name].type
+        oValue = value.asType(type)
+      } catch (Exception e) {
+        println "Errors: ${e.message}"
+        setting.errors.reject('persistentsettings.type.invalid')
+        return setting
+      }
+      return setValue(name, (Object) oValue)
     }
-    try {
-      def type = PersistentSetting.getConfig()[name].type
-      oValue = value.asType(type)
-    } catch (Exception e) {
-      println "Errors: ${e.message}"
-      setting.errors.reject('persistentsettings.type.invalid')
-      return setting
-    }
-    return setValue(name, (Object) oValue)
   }
 
   static namedQueries = {
