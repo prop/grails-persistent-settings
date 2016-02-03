@@ -16,13 +16,15 @@ class PersistentSetting {
 
   Boolean isHidden
 
+  String module
+
   static transients = [
-    'propertyName',
-    'description',
-    'value',
-    'oValue',
-    'type',
-    'advanced'
+      'propertyName',
+      'description',
+      'value',
+      'oValue',
+      'type',
+      'advanced'
   ]
 
   /**
@@ -101,9 +103,9 @@ class PersistentSetting {
         return "persistentsettings.type.invalid"
       }
 
-      def list = obj.getAdvanced().list
+      def list = obj.getAdvanced()?.list
       if (list && list.size() > 0 && obj.value != null &&
-        !list.contains(obj.oValue)) {
+          !list.contains(obj.oValue)) {
         return "persistentsettings.value.invalid"
       }
 
@@ -117,6 +119,77 @@ class PersistentSetting {
     sValue nullable: true
 
     isHidden nullable: true
+    module nullable: true
+  }
+
+  static List<PersistentSetting> firstCleanBootstrap(String moduleName = null) {
+    PersistentSetting.executeUpdate("delete from PersistentSetting ps")
+    return doBootstrap(getConfig(), moduleName)
+  }
+
+  private static final Object psStorageSyncObj = new Object()
+
+  static List<PersistentSetting> reCleanBootstrap(ConfigObject config, String moduleName) {
+    if (!moduleName) {
+      throw IllegalArgumentException(
+          "Module name was not specified while trying to clean-boostrap PersistentSettings")
+    }
+
+    if (config) {
+      synchronized (psStorageSyncObj) {
+        deleteStalePSFromDomain(moduleName)
+
+        addToConfig(config, moduleName)
+        List<PersistentSetting> bootstrapped = doBootstrap(config, moduleName, true)
+
+        deleteOtherConfigs(bootstrapped, moduleName)
+        return bootstrapped
+      }
+    } else {
+      return []
+    }
+  }
+
+  private static List<ConfigObject> deleteOtherConfigs(List<PersistentSetting> recentBootstrapped, String moduleName) {
+    def namesOfPsToDelete = getConfig().collect({ k, v -> k }) - recentBootstrapped.collect({ it.name })
+    return deleteFromLocalConfig(moduleName, namesOfPsToDelete)
+  }
+
+  private static List deleteFromLocalConfig(String moduleName, List namesOfPsToDelete) {
+    def iterator = getConfig().entrySet().iterator()
+
+    List deleted = []
+    while (iterator.hasNext()) {
+      def val = iterator.next().value
+      if (val.module == moduleName && val.name in namesOfPsToDelete) {
+        iterator.remove()
+        deleted.add(val)
+      }
+    }
+
+    return deleted
+  }
+
+  static ConfigObject addToConfig(ConfigObject configs, String module) {
+    def clonedConfigs = configs.clone()
+    clonedConfigs.each { k, v -> v.module = module }
+    getConfig() << clonedConfigs
+    clonedConfigs
+  }
+
+  /**
+   * Deletes all PersistentSettings that have been stored in a DB by a module name.
+   * @param moduleName Nullable.
+   * @return
+   * List of deleted entities. Nullable
+   */
+  private static def deleteStalePSFromDomain(String moduleName = null) {
+    if (moduleName) {
+      PersistentSetting.executeUpdate("delete from PersistentSetting ps where ps.module=:moduleName",
+          [moduleName: moduleName])
+    } else {
+      PersistentSetting.executeUpdate("delete from PersistentSetting ps where ps.module is null")
+    }
   }
 
   static void bootstrap() {
@@ -129,21 +202,43 @@ class PersistentSetting {
       instance;
     }
 
-    if (!PersistentSetting.getConfig()) return
+    def configs = getConfig()
+    doBootstrap(configs)
+  }
 
-    (PersistentSetting.getConfig().collect { k, v -> k } - PersistentSetting.list().collect { it.name }).each {
+  protected static List<PersistentSetting> doBootstrap(configs,
+                                                       String moduleName = null, boolean failOnError = false) {
+    if (!configs) return []
+
+    List<PersistentSetting> created = []
+
+    def allPs = PersistentSetting.list().findAll({
+      it.module == moduleName
+    })
+
+    (configs.collect { k, v -> k } - allPs.collect { it.name }).each {
       try {
-        def s = PersistentSetting.getConfig()[it]
-        def ps = new PersistentSetting();
-        ps.name = it;
-        ps.value = s.defaultValue;
+        def s = configs[it]
+
+        def name = it
+        PersistentSetting ps = new PersistentSetting()
+        ps.name = name
+        ps.value = s.defaultValue
+        ps.module = moduleName ?: ((s.module instanceof String)? s.module : null)
         ps.isHidden = s.hidden ?: false
         ps.save(failOnError: true, flush: true);
+        created.add(ps)
       } catch (Exception e) {
-        print "$it, ${PersistentSetting.getConfig()[it]}: " + e.message
+        print "$it, ${configs[it]}: " + e.message
+        if (failOnError) {
+          throw e
+        }
       }
     }
+
+    return created
   }
+
 
   static Object getValue(String name) {
     try {
@@ -174,21 +269,23 @@ class PersistentSetting {
   }
 
   static PersistentSetting setValue(String name, String value) {
-    def setting = new PersistentSetting()
-    def oValue
-    if (!PersistentSetting.getConfig().containsKey(name)) {
-      setting.errors.reject('persistentsettings.name.invalid')
-      return setting
+    synchronized (psStorageSyncObj){
+      def setting = new org.grails.persistentsettings.PersistentSetting()
+      def oValue
+      if (!org.grails.persistentsettings.PersistentSetting.getConfig().containsKey(name)) {
+        setting.errors.reject('persistentsettings.name.invalid')
+        return setting
+      }
+      try {
+        def type = org.grails.persistentsettings.PersistentSetting.getConfig()[name].type
+        oValue = value.asType(type)
+      } catch (Exception e) {
+        println "Errors: ${e.message}"
+        setting.errors.reject('persistentsettings.type.invalid')
+        return setting
+      }
+      return setValue(name, (Object) oValue)
     }
-    try {
-      def type = PersistentSetting.getConfig()[name].type
-      oValue = value.asType(type)
-    } catch (Exception e) {
-      println "Errors: ${e.message}"
-      setting.errors.reject('persistentsettings.type.invalid')
-      return setting
-    }
-    return setValue(name, (Object) oValue)
   }
 
   static namedQueries = {
