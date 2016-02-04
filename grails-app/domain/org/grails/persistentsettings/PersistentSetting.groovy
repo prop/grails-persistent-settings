@@ -130,11 +130,6 @@ class PersistentSetting {
   private static final Object psStorageSyncObj = new Object()
 
   static List<PersistentSetting> reCleanBootstrap(ConfigObject config, String moduleName) {
-    if (!moduleName) {
-      throw IllegalArgumentException(
-          "Module name was not specified while trying to clean-boostrap PersistentSettings")
-    }
-
     if (config) {
       synchronized (psStorageSyncObj) {
         deleteStalePSFromDomain(moduleName)
@@ -160,14 +155,23 @@ class PersistentSetting {
 
     List deleted = []
     while (iterator.hasNext()) {
-      def val = iterator.next().value
-      if (val.module == moduleName && val.name in namesOfPsToDelete) {
+      def iter = iterator.next()
+      def val = iter.value
+
+      if ( sameModuleNames(moduleName, val.module) &&
+          iter.key in namesOfPsToDelete) {
         iterator.remove()
         deleted.add(val)
       }
     }
 
     return deleted
+  }
+
+  //Module in getConfig's PS might be instance of ConfigObject
+  // if it has not had a value specified explicitly in the Config.
+  private static boolean sameModuleNames(String moduleName, valModule) {
+    moduleName != null && valModule == moduleName || moduleName == null && !(valModule instanceof String)
   }
 
   static ConfigObject addToConfig(ConfigObject configs, String module) {
