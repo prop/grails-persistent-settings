@@ -17,6 +17,7 @@ class PersistentSetting {
   Boolean isHidden
 
   String module
+  private static final String MODULE_NAME_SEPARATOR = ':'
 
   static transients = [
       'propertyName',
@@ -43,7 +44,7 @@ class PersistentSetting {
     if (name == null || sValue == null) return null
     if (oValue != null) return oValue
     try {
-      def type = (Class) PersistentSetting.getConfig()[name].type
+      def type = (Class) PersistentSetting.getConfig()[getSettingFullName(name, module)].type
       if (type == Boolean.class) return sValue == "true"
       def res = sValue.asType(type)
       return res
@@ -74,31 +75,33 @@ class PersistentSetting {
   }
 
   ConfigObject getAdvanced() {
-    return PersistentSetting.getConfig()[name].advanced
+    def fullName = getSettingFullName(name, module)
+    return PersistentSetting.getConfig()[fullName].advanced
   }
 
   Class getType() {
-    def type = PersistentSetting.getConfig()[name].type
+    def type = PersistentSetting.getConfig()[getSettingFullName(name, module)].type
     if (type.getClass() == Class.class) return type
     return null
   }
 
   static constraints = {
 
-    name nullable: false, unique: true, validator: { val, obj ->
+    name nullable: false, unique: 'module', validator: { val, obj ->
       // name is invalid if getConfig() does not contain it
-      if (!PersistentSetting.getConfig().containsKey(val)) {
+      if (!PersistentSetting.getConfig().containsKey(getSettingFullName(val, obj.module))) {
         return 'persistentsettings.name.invalid'
       }
       return true
     }
 
     value nullable: true, bindable: true, validator: { val, obj ->
-      if (!PersistentSetting.getConfig().containsKey(obj.name)) {
+      def configFullName = getSettingFullName(obj.name, obj.module)
+      if (!PersistentSetting.getConfig().containsKey(configFullName)) {
         return 'name.invalid'
       }
 
-      def s = PersistentSetting.getConfig()[obj.name]
+      def s = PersistentSetting.getConfig()[configFullName]
       if (obj.oValue != null && obj.oValue.getClass() != s.type) {
         return "persistentsettings.type.invalid"
       }
@@ -130,70 +133,93 @@ class PersistentSetting {
   private static final Object psStorageSyncObj = new Object()
 
   static List<PersistentSetting> reCleanBootstrap(ConfigObject config, String moduleName) {
-    if (config) {
+    if (config != null && moduleName != null) {
       synchronized (psStorageSyncObj) {
-        deleteStalePSFromDomain(moduleName)
+        addNewConfigs(config, moduleName)
+        doBootstrap(config, moduleName)
 
-        addToConfig(config, moduleName)
-        List<PersistentSetting> bootstrapped = doBootstrap(config, moduleName, true)
-
-        deleteOtherConfigs(bootstrapped, moduleName)
-        return bootstrapped
+        List<PersistentSetting> actualPs = PersistentSetting.findAllByModuleAndNameInList(moduleName,
+            config.collect { it.key })
+        deleteOtherConfigs(actualPs, moduleName)
+        return actualPs
       }
     } else {
       return []
     }
   }
 
-  private static List<ConfigObject> deleteOtherConfigs(List<PersistentSetting> recentBootstrapped, String moduleName) {
-    def namesOfPsToDelete = getConfig().collect({ k, v -> k }) - recentBootstrapped.collect({ it.name })
-    return deleteFromLocalConfig(moduleName, namesOfPsToDelete)
+  static ConfigObject addNewConfigs(ConfigObject configToLoad, String module) {
+    def config = getConfig()
+    configToLoad.each { String k, v ->
+      def fullName = getSettingFullName(k, module)
+
+      if (!config[fullName]) {
+        v.module = module
+        config.putAt(fullName, v)
+      }
+    }
+
+    configToLoad
   }
 
-  private static List deleteFromLocalConfig(String moduleName, List namesOfPsToDelete) {
+  private static def deleteOtherConfigs(List<PersistentSetting> actualPs, String moduleName) {
+    def fullNamesOfPsToDelete =
+        getConfig().collect({ k, v -> k }).findAll({it.toString().endsWith(MODULE_NAME_SEPARATOR + moduleName)}) -
+        actualPs.collect({ getSettingFullName(it.name, moduleName) })
+
+    def deletedConfigs = deleteFromLocalConfig(fullNamesOfPsToDelete)
+    if (deletedConfigs) {
+      PersistentSetting.executeUpdate("delete from PersistentSetting ps " +
+          "where ps.name in :deletedConfigNames and ps.module=:module",
+          [deletedConfigNames: deletedConfigs.collect {k, v -> getSettingOriginName(k.toString())}, module: moduleName])
+    }
+    return deletedConfigs
+  }
+
+  private static String getSettingOriginName(String fullName){
+    if (fullName) {
+      int separatorIndex = fullName.indexOf(MODULE_NAME_SEPARATOR)
+      if (separatorIndex != -1) {
+        return fullName.substring(0, separatorIndex)
+      }
+    }
+    return fullName
+  }
+
+  private static Map deleteFromLocalConfig(List fullNamesOfPsToDelete) {
     def iterator = getConfig().entrySet().iterator()
 
-    List deleted = []
+    Map deleted = [:]
     while (iterator.hasNext()) {
       def iter = iterator.next()
       def val = iter.value
+      def key = iter.key
 
-      if ( sameModuleNames(moduleName, val.module) &&
-          iter.key in namesOfPsToDelete) {
+      if (key in fullNamesOfPsToDelete) {
         iterator.remove()
-        deleted.add(val)
+        deleted.put(key, val)
       }
     }
 
     return deleted
   }
 
-  //Module in getConfig's PS might be instance of ConfigObject
-  // if it has not had a value specified explicitly in the Config.
-  private static boolean sameModuleNames(String moduleName, valModule) {
-    moduleName != null && valModule == moduleName || moduleName == null && !(valModule instanceof String)
-  }
-
-  static ConfigObject addToConfig(ConfigObject configs, String module) {
-    def clonedConfigs = configs.clone()
-    clonedConfigs.each { k, v -> v.module = module }
-    getConfig() << clonedConfigs
-    clonedConfigs
-  }
-
   /**
-   * Deletes all PersistentSettings that have been stored in a DB by a module name.
-   * @param moduleName Nullable.
+   * Forms compound setting name which consists from property name and module name
+   * @param name
+   * @param module
    * @return
-   * List of deleted entities. Nullable
    */
-  private static def deleteStalePSFromDomain(String moduleName = null) {
-    if (moduleName) {
-      PersistentSetting.executeUpdate("delete from PersistentSetting ps where ps.module=:moduleName",
-          [moduleName: moduleName])
-    } else {
-      PersistentSetting.executeUpdate("delete from PersistentSetting ps where ps.module is null")
+  private static String getSettingFullName(String name, String module = null){
+    if(module && name) {
+      if (name.contains(MODULE_NAME_SEPARATOR)) {
+        throw new IllegalArgumentException("PersistentSetting's name" +
+            " must not contain symbol '$MODULE_NAME_SEPARATOR'");
+      }
+      return name + MODULE_NAME_SEPARATOR + module
     }
+
+    return name
   }
 
   static void bootstrap() {
@@ -210,8 +236,7 @@ class PersistentSetting {
     doBootstrap(configs)
   }
 
-  protected static List<PersistentSetting> doBootstrap(configs,
-                                                       String moduleName = null, boolean failOnError = false) {
+  protected static List<PersistentSetting> doBootstrap(configs, String moduleName = null) {
     if (!configs) return []
 
     List<PersistentSetting> created = []
@@ -228,25 +253,25 @@ class PersistentSetting {
         PersistentSetting ps = new PersistentSetting()
         ps.name = name
         ps.value = s.defaultValue
-        ps.module = moduleName ?: ((s.module instanceof String)? s.module : null)
+        ps.module = moduleName ?: ((s.module instanceof String) ? s.module : null)
         ps.isHidden = s.hidden ?: false
         ps.save(failOnError: true, flush: true);
         created.add(ps)
       } catch (Exception e) {
         print "$it, ${configs[it]}: " + e.message
-        if (failOnError) {
-          throw e
-        }
       }
     }
 
     return created
   }
 
-
-  static Object getValue(String name) {
+  static Object getValue(String name, String module = null) {
     try {
-      return findByName(name, [cache: true]).value
+      if (!module) {
+        return findByName(name, [cache: true]).value
+      } else {
+        return findByNameAndModule([name, module], [cache: true]).value
+      }
     } catch (NullPointerException e) {
       throw new RuntimeException("Invalid settings key: '$name'")
     }
@@ -273,7 +298,7 @@ class PersistentSetting {
   }
 
   static PersistentSetting setValue(String name, String value) {
-    synchronized (psStorageSyncObj){
+    synchronized (psStorageSyncObj) {
       def setting = new org.grails.persistentsettings.PersistentSetting()
       def oValue
       if (!org.grails.persistentsettings.PersistentSetting.getConfig().containsKey(name)) {
