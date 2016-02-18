@@ -67,11 +67,19 @@ class PersistentSetting {
   }
 
   String getPropertyName() {
-    return "org.grails.persistentsettings." + name + ".name"
+    if (!module) {
+      return "org.grails.persistentsettings." + name + ".name"
+    } else {
+      return "js." + module + ".settings." + name + ".name"
+    }
   }
 
   String getDescription() {
-    return "org.grails.persistentsettings." + name + ".description"
+    if (!module) {
+      return "org.grails.persistentsettings." + name + ".description"
+    } else {
+      return "js." + module + ".settings." + name + ".description"
+    }
   }
 
   ConfigObject getAdvanced() {
