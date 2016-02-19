@@ -143,8 +143,9 @@ class PersistentSetting {
   static List<PersistentSetting> reCleanBootstrap(ConfigObject config, String moduleName) {
     if (config != null && moduleName != null) {
       synchronized (psStorageSyncObj) {
-        addNewConfigs(config, moduleName)
-        doBootstrap(config, moduleName)
+        config = addNewConfigs(config, moduleName)
+
+        updateValuesFromNullModulePs(doBootstrap(config, moduleName))
 
         List<PersistentSetting> actualPs = PersistentSetting.findAllByModuleAndNameInList(moduleName,
             config.collect { it.key })
@@ -156,35 +157,57 @@ class PersistentSetting {
     }
   }
 
-  static ConfigObject addNewConfigs(ConfigObject configToLoad, String module) {
-    def config = getConfig()
-    configToLoad.each { String k, v ->
-      def fullName = getSettingFullName(k, module)
-
-      if (!config[fullName]) {
-        v.module = module
-        config.putAt(fullName, v)
+  static void updateValuesFromNullModulePs(List<PersistentSetting> persistentSettings) {
+    for (PersistentSetting ps : persistentSettings) {
+      PersistentSetting nullModuleSetting = PersistentSetting.findByNameAndModuleIsNull(ps.name)
+      if (nullModuleSetting) {
+        ps.setValue(nullModuleSetting.getValue())
+        ps.save(failOnError: true, flush: true)
       }
     }
+  }
 
-    configToLoad
+  static ConfigObject addNewConfigs(ConfigObject configsToLoad, String module) {
+    def config = getConfig()
+
+    ConfigObject added = new ConfigObject()
+    configsToLoad.each { String k, v ->
+      def fullName = getSettingFullName(k, module)
+
+      def configToSave = config[k]
+      if (configToSave) {
+        configToSave = configToSave.clone()
+      } else {
+        configToSave = v.clone()
+      }
+
+      configToSave.module = module
+      config.putAt(fullName, configToSave)
+      added.put(k, configToSave)
+    }
+
+    return added
   }
 
   private static def deleteOtherConfigs(List<PersistentSetting> actualPs, String moduleName) {
     def fullNamesOfPsToDelete =
-        getConfig().collect({ k, v -> k }).findAll({it.toString().endsWith(MODULE_NAME_SEPARATOR + moduleName)}) -
-        actualPs.collect({ getSettingFullName(it.name, moduleName) })
+        getFullNamesOfConfigsForModule(moduleName) -
+            actualPs.collect({ getSettingFullName(it.name, moduleName) })
 
     def deletedConfigs = deleteFromLocalConfig(fullNamesOfPsToDelete)
     if (deletedConfigs) {
       PersistentSetting.executeUpdate("delete from PersistentSetting ps " +
           "where ps.name in :deletedConfigNames and ps.module=:module",
-          [deletedConfigNames: deletedConfigs.collect {k, v -> getSettingOriginName(k.toString())}, module: moduleName])
+          [deletedConfigNames: deletedConfigs.collect { k, v -> getSettingOriginName(k.toString()) }, module: moduleName])
     }
     return deletedConfigs
   }
 
-  private static String getSettingOriginName(String fullName){
+  private static ArrayList<Object> getFullNamesOfConfigsForModule(String moduleName) {
+    getConfig().collect({ k, v -> k }).findAll({ it.toString().endsWith(MODULE_NAME_SEPARATOR + moduleName) })
+  }
+
+  private static String getSettingOriginName(String fullName) {
     if (fullName) {
       int separatorIndex = fullName.indexOf(MODULE_NAME_SEPARATOR)
       if (separatorIndex != -1) {
@@ -218,8 +241,8 @@ class PersistentSetting {
    * @param module
    * @return
    */
-  private static String getSettingFullName(String name, String module = null){
-    if(module && name) {
+  private static String getSettingFullName(String name, String module = null) {
+    if (module && name) {
       if (name.contains(MODULE_NAME_SEPARATOR)) {
         throw new IllegalArgumentException("PersistentSetting's name" +
             " must not contain symbol '$MODULE_NAME_SEPARATOR'");
