@@ -167,6 +167,7 @@ class PersistentSetting {
       PersistentSetting nullModuleSetting = PersistentSetting.findByNameAndModuleIsNull(ps.name)
       if (nullModuleSetting) {
         ps.setValue(nullModuleSetting.getValue())
+        ps.setIsHidden(nullModuleSetting.getIsHidden())
         ps.save(failOnError: true, flush: true)
       }
     }
@@ -206,7 +207,9 @@ class PersistentSetting {
   private static void deleteFromDomainConfig(List<PersistentSetting> actualPs, String moduleName ) {
     def configNamesForDelete = PersistentSetting.findAllByModule(moduleName).collect { it.name } -
         actualPs.collect { it.name }
-    dbDeleteConfigs(configNamesForDelete, moduleName)
+    if (configNamesForDelete) {
+      dbDeleteConfigs(configNamesForDelete, moduleName)
+    }
   }
 
   private static void dbDeleteConfigs(List<String> configNamesForDelete, String moduleName = null) {
@@ -227,35 +230,28 @@ class PersistentSetting {
     getConfig().collect({ k, v -> k }).findAll({ it.toString().endsWith(MODULE_NAME_SEPARATOR + moduleName) })
   }
 
-  private static String getSettingOriginName(String fullName) {
-    if (fullName) {
-      int separatorIndex = fullName.indexOf(MODULE_NAME_SEPARATOR)
-      if (separatorIndex != -1) {
-        return fullName.substring(0, separatorIndex)
-      }
-    }
-    return fullName
-  }
-
   private static void deleteFromLocalConfig(List fullNamesOfPsToDelete) {
-    def iterator = getConfig().entrySet().iterator()
+    if (fullNamesOfPsToDelete) {
+      def iterator = getConfig().entrySet().iterator()
 
-    while (iterator.hasNext()) {
-      def iter = iterator.next()
-      def val = iter.value
-      def key = iter.key
+      while (iterator.hasNext()) {
+        def iter = iterator.next()
+        def val = iter.value
+        def key = iter.key
 
-      if (key in fullNamesOfPsToDelete) {
-        iterator.remove()
+        if (key in fullNamesOfPsToDelete) {
+          iterator.remove()
+        }
       }
     }
   }
 
   /**
    * Forms compound setting name which consists from property name and module name
-   * @param name
-   * @param module
-   * @return
+   * @param name pure setting name. Must not contain {@code MODULE_NAME_SEPARATOR}. Nullable
+   * @param module module name. Nullable
+   * @return Compound setting name. Nullable
+   *
    */
   private static String getSettingFullName(String name, String module = null) {
     if (module && name) {
