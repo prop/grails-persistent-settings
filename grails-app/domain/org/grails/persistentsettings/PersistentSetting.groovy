@@ -204,7 +204,7 @@ class PersistentSetting {
     deleteFromDomainConfig(actualPs, moduleName)
   }
 
-  private static void deleteFromDomainConfig(List<PersistentSetting> actualPs, String moduleName ) {
+  private static void deleteFromDomainConfig(List<PersistentSetting> actualPs, String moduleName) {
     def configNamesForDelete = PersistentSetting.findAllByModule(moduleName).collect { it.name } -
         actualPs.collect { it.name }
     if (configNamesForDelete) {
@@ -214,7 +214,7 @@ class PersistentSetting {
 
   private static void dbDeleteConfigs(List<String> configNamesForDelete, String moduleName = null) {
     String hql = "delete from PersistentSetting ps where ps.name in :deletedConfigNames"
-    Map params = [deletedConfigNames:  configNamesForDelete] as Map
+    Map params = [deletedConfigNames: configNamesForDelete] as Map
 
     if (moduleName != null) {
       hql += " and ps.module=:module"
@@ -223,7 +223,7 @@ class PersistentSetting {
       hql += " and ps.module is null"
     }
 
-    PersistentSetting.executeUpdate(hql,params)
+    PersistentSetting.executeUpdate(hql, params)
   }
 
   private static ArrayList<Object> getFullNamesOfConfigsForModule(String moduleName) {
@@ -236,7 +236,6 @@ class PersistentSetting {
 
       while (iterator.hasNext()) {
         def iter = iterator.next()
-        def val = iter.value
         def key = iter.key
 
         if (key in fullNamesOfPsToDelete) {
@@ -313,7 +312,7 @@ class PersistentSetting {
       if (!module) {
         return findByName(name, [cache: true]).value
       } else {
-        return findByNameAndModule([name, module], [cache: true]).value
+        return findByNameAndModule(name, module, [cache: true]).value
       }
     } catch (NullPointerException e) {
       throw new RuntimeException("Invalid settings key: '$name'")
