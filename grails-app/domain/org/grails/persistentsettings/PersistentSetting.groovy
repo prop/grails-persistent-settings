@@ -166,7 +166,7 @@ class PersistentSetting {
     for (PersistentSetting ps : persistentSettings) {
       PersistentSetting nullModuleSetting = PersistentSetting.findByNameAndModuleIsNull(ps.name)
       if (nullModuleSetting) {
-        ps.setValue(nullModuleSetting.getValue())
+        ps.setsValue(nullModuleSetting.getsValue())
         ps.setIsHidden(nullModuleSetting.getIsHidden())
         ps.save(failOnError: true, flush: true)
       }
