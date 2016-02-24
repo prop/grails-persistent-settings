@@ -16,6 +16,8 @@ class PersistentSetting {
 
   Boolean isHidden
 
+  private Class type
+
   String module
   private static final String MODULE_NAME_SEPARATOR = ':'
 
@@ -24,7 +26,6 @@ class PersistentSetting {
       'description',
       'value',
       'oValue',
-      'type',
       'advanced'
   ]
 
@@ -44,7 +45,10 @@ class PersistentSetting {
     if (name == null || sValue == null) return null
     if (oValue != null) return oValue
     try {
-      def type = (Class) PersistentSetting.getConfig()[getSettingFullName(name, module)].type
+      def type = (Class) PersistentSetting.getConfig()[getSettingFullName(name, module)]?.type
+      if (!type) {
+        type = this.type
+      }
       if (type == Boolean.class) return sValue == "true"
       def res = sValue.asType(type)
       return res
@@ -64,6 +68,7 @@ class PersistentSetting {
     sValue type: 'text'
     sort 'name'
     cache true
+    type type: ClassFullName2VarcharUserType, class: String
   }
 
   String getPropertyName() {
@@ -88,16 +93,37 @@ class PersistentSetting {
   }
 
   Class getType() {
-    def type = PersistentSetting.getConfig()[getSettingFullName(name, module)].type
+    def settingFullName = getSettingFullName(name, module)
+    def type = getPropertyWithoutSideEffect(settingFullName, "type")
+    if (!type) {
+      type = this.type
+    }
     if (type.getClass() == Class.class) return type
     return null
+  }
+
+  private static def getPropertyWithoutSideEffect(String settingFullName, String property){
+    if (!getConfig().containsKey(settingFullName)) {
+      return null
+    }
+    def setting = getConfig()[settingFullName]
+
+    if (!setting.containsKey(property)) {
+      return null
+    }
+
+    return setting[property]
+  }
+
+  void setType(Class type) {
+    this.type = type
   }
 
   static constraints = {
 
     name nullable: false, unique: 'module', validator: { val, obj ->
       // name is invalid if getConfig() does not contain it
-      if (!PersistentSetting.getConfig().containsKey(getSettingFullName(val, obj.module))) {
+    if (!PersistentSetting.getConfig().containsKey(getSettingFullName(val, obj.module))) {
         return 'persistentsettings.name.invalid'
       }
       return true
@@ -116,7 +142,7 @@ class PersistentSetting {
 
       def list = obj.getAdvanced()?.list
       if (list && list.size() > 0 && obj.value != null &&
-          !list.contains(obj.oValue)) {
+          !list.contains(obj.value)) {
         return "persistentsettings.value.invalid"
       }
 
@@ -168,6 +194,10 @@ class PersistentSetting {
       if (nullModuleSetting) {
         ps.setsValue(nullModuleSetting.getsValue())
         ps.setIsHidden(nullModuleSetting.getIsHidden())
+        def type = nullModuleSetting.getType()
+        if (type) {
+          ps.setType(type)
+        }
         ps.save(failOnError: true, flush: true)
       }
     }
@@ -294,6 +324,7 @@ class PersistentSetting {
         def name = it
         PersistentSetting ps = new PersistentSetting()
         ps.name = name
+        ps.type = s.type
         ps.value = s.defaultValue
         ps.module = moduleName ?: ((s.module instanceof String) ? s.module : null)
         ps.isHidden = s.hidden ?: false
