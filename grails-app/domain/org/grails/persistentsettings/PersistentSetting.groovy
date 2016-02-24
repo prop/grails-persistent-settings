@@ -45,7 +45,7 @@ class PersistentSetting {
     if (name == null || sValue == null) return null
     if (oValue != null) return oValue
     try {
-      def type = (Class) PersistentSetting.getConfig()[getSettingFullName(name, module)]?.type
+      def type = (Class) getPropertyWithoutSideEffect(getSettingFullName(name, module), "type")
       if (!type) {
         type = this.type
       }
@@ -68,7 +68,7 @@ class PersistentSetting {
     sValue type: 'text'
     sort 'name'
     cache true
-    type type: ClassFullName2VarcharUserType, class: String
+    type type: ClassFullName2VarcharUserType, class: String, nullable: true
   }
 
   String getPropertyName() {
@@ -341,7 +341,7 @@ class PersistentSetting {
   static Object getValue(String name, String module = null) {
     try {
       if (!module) {
-        return findByName(name, [cache: true]).value
+        return findByNameAndModuleIsNull(name, [cache: true]).value
       } else {
         return findByNameAndModule(name, module, [cache: true]).value
       }
