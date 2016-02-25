@@ -89,7 +89,7 @@ class PersistentSetting {
 
   ConfigObject getAdvanced() {
     def fullName = getSettingFullName(name, module)
-    return PersistentSetting.getConfig()[fullName].advanced
+    return getPropertyWithoutSideEffect(fullName, "advanced") as ConfigObject
   }
 
   Class getType() {
