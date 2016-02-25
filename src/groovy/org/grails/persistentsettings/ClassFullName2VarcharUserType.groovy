@@ -22,8 +22,8 @@ class ClassFullName2VarcharUserType implements UserType {
 
   @Override
   boolean equals(Object x, Object y) throws HibernateException {
-    if (!x) {
-      return !y
+    if (x == null) {
+      return y == null
     } else {
       return x.equals(y)
     }
