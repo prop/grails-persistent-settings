@@ -151,6 +151,7 @@ class PersistentSetting {
 
     isHidden nullable: true
     module nullable: true
+    type nullable:true
   }
 
   static List<PersistentSetting> firstCleanBootstrap() {
