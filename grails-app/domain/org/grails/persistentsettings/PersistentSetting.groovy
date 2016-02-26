@@ -93,13 +93,7 @@ class PersistentSetting {
   }
 
   Class getType() {
-    def settingFullName = getSettingFullName(name, module)
-    def type = getPropertyWithoutSideEffect(settingFullName, "type")
-    if (!type) {
-      type = this.type
-    }
-    if (type.getClass() == Class.class) return type
-    return null
+    return this.type
   }
 
   private static def getPropertyWithoutSideEffect(String settingFullName, String property){
