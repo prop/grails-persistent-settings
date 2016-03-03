@@ -1,4 +1,6 @@
 package org.grails.persistentsettings
+
+import org.codehaus.groovy.grails.web.json.JSONArray
 import org.hibernate.HibernateException
 import org.hibernate.usertype.UserType
 
@@ -6,6 +8,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Types
+import java.util.Map.Entry
 
 /**
  * Created by d.ponomarev on 24.02.2016.
@@ -46,17 +49,51 @@ class SerializableConfigObjectUserType implements UserType {
       stream.withObjectInputStream(Thread.currentThread().contextClassLoader, { is ->
         result = is.readObject()
       })
-      return result
+      return convertFromSerializible(((LinkedHashMap) result))
     } else {
       return null
     }
+  }
+
+  LinkedHashMap convertToSerializible(ConfigObject configObject){
+    LinkedHashMap result = null;
+
+    if (configObject) {
+      result = new LinkedHashMap()
+      for (Entry entry : configObject.entrySet()) {
+        def value = entry.getValue()
+        if (value instanceof JSONArray) {
+          value = value.toArray()
+        }
+        result.put(entry.key, value)
+      }
+    }
+
+    return result
+  }
+
+  ConfigObject convertFromSerializible(LinkedHashMap linkedHashMap){
+    ConfigObject result = null;
+
+    if (linkedHashMap) {
+      result = new ConfigObject()
+      for (Entry entry : linkedHashMap.entrySet()) {
+        def value = entry.getValue()
+        if (value instanceof ArrayList) {
+          value = new JSONArray(value)
+        }
+        result.put(entry.key, value)
+      }
+    }
+
+    return result
   }
 
   @Override
   void nullSafeSet(PreparedStatement st, Object value, int index) throws HibernateException, SQLException {
     if (value) {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      new ObjectOutputStream(bos).writeObject(value)
+      new ObjectOutputStream(bos).writeObject(convertToSerializible(((ConfigObject) value)))
       st.setBytes(index, bos.toByteArray())
     } else {
       st.setNull(index, SQL_TYPE)
