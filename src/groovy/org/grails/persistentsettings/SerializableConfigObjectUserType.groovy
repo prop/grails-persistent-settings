@@ -43,12 +43,19 @@ class SerializableConfigObjectUserType implements UserType {
 
   @Override
   Object nullSafeGet(ResultSet rs, String[] names, Object owner) throws HibernateException, SQLException {
-    def stream = rs.getBinaryStream(names[0])
+    def column = names[0]
+    def stream = rs.getBinaryStream(column)
     if (stream) {
       Object result = null;
-      stream.withObjectInputStream(Thread.currentThread().contextClassLoader, { is ->
-        result = is.readObject()
-      })
+      try {
+        stream.withObjectInputStream(Thread.currentThread().contextClassLoader, { is ->
+          result = is.readObject()
+        })
+      } catch (Exception cnfe) {
+        String idValue = owner.hasProperty("id") ? owner.id as String : "null"
+        throw new RuntimeException("Can not convert property of instaince of '${owner.class.name}' " +
+            "with id='$idValue' which corresponds column '$column'", cnfe)
+      }
       return convertFromSerializible(((LinkedHashMap) result))
     } else {
       return null

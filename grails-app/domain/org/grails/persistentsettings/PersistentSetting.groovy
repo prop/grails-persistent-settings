@@ -52,12 +52,13 @@ class PersistentSetting {
       def res = sValue.asType(type)
       return res
     } catch (Exception e) {
+      print "Exception while getting value of persistent setting with name='$name': ${e.message}"
       return sValue
     }
   }
 
   public Class resolveType() {
-    def type = (Class) getPropertyWithoutSideEffect(getSettingFullName(name, module), "type")
+    def type = (Class) getValueWithoutSideEffect(getSettingFullName(name, module), "type")
     if (!type) {
       type = this.type
     }
