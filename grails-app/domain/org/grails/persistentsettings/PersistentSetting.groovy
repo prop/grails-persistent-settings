@@ -47,16 +47,21 @@ class PersistentSetting {
     if (name == null || sValue == null) return null
     if (oValue != null) return oValue
     try {
-      def type = (Class) getValueWithoutSideEffect(getSettingFullName(name, module), "type")
-      if (!type) {
-        type = this.type
-      }
+      Class type = resolveType()
       if (type == Boolean.class) return sValue == "true"
       def res = sValue.asType(type)
       return res
     } catch (Exception e) {
       return sValue
     }
+  }
+
+  public Class resolveType() {
+    def type = (Class) getPropertyWithoutSideEffect(getSettingFullName(name, module), "type")
+    if (!type) {
+      type = this.type
+    }
+    type
   }
 
   public void setValue(Object v) {
@@ -89,7 +94,6 @@ class PersistentSetting {
       return "js." + module + ".settings." + name + ".description"
     }
   }
-
 
   ConfigObject getAdvanced() {
     def fullName = getSettingFullName(name, module)
