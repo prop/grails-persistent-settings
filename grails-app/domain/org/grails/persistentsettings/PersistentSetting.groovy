@@ -161,7 +161,7 @@ class PersistentSetting {
         return "persistentsettings.type.invalid"
       }
 
-      def list = obj.getStoredAdvanced()?.list
+      def list = obj.getAdvanced()?.list
       if (list && list.size() > 0 && obj.value != null &&
           !list.contains(obj.value)) {
         return "persistentsettings.value.invalid"
