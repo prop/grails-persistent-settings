@@ -16,6 +16,8 @@ class PersistentSetting {
 
   Boolean isHidden
 
+  ConfigObject storedAdvanced
+
   private Class type
 
   String module
@@ -50,12 +52,13 @@ class PersistentSetting {
       def res = sValue.asType(type)
       return res
     } catch (Exception e) {
+      print "Exception while getting value of persistent setting with name='$name': ${e.message}"
       return sValue
     }
   }
 
   public Class resolveType() {
-    def type = (Class) getPropertyWithoutSideEffect(getSettingFullName(name, module), "type")
+    def type = (Class) getValueWithoutSideEffect(getSettingFullName(name, module), "type")
     if (!type) {
       type = this.type
     }
@@ -73,6 +76,7 @@ class PersistentSetting {
     sValue type: 'text'
     sort 'name'
     cache true
+    storedAdvanced type: SerializableConfigObjectUserType, class: ConfigObject, nullable: true, column: 'advanced'
     type type: ClassFullName2VarcharUserType, class: String, nullable: true
   }
 
@@ -94,24 +98,42 @@ class PersistentSetting {
 
   ConfigObject getAdvanced() {
     def fullName = getSettingFullName(name, module)
-    return getPropertyWithoutSideEffect(fullName, "advanced") as ConfigObject
+
+    def advanced = getValueWithoutSideEffect(fullName, "advanced")
+
+    if (!advanced) {
+      advanced = this.storedAdvanced
+    }
+
+    return advanced
+  }
+
+  void setAdvanced(ConfigObject advanced) {
+    def fullName = getSettingFullName(name, module)
+
+    if (getConfig().containsKey(fullName)) {
+      def localSetting = getConfig()[fullName]
+      localSetting.putAt("advanced", advanced)
+    }
+
+    this.storedAdvanced = advanced
   }
 
   Class getType() {
     return this.type
   }
 
-  private static def getPropertyWithoutSideEffect(String settingFullName, String property){
-    if (!getConfig().containsKey(settingFullName)) {
+  private static def getValueWithoutSideEffect(String settingFullName, String key, def config = getConfig()){
+    if (!config.containsKey(settingFullName)) {
       return null
     }
-    def setting = getConfig()[settingFullName]
+    def setting = config[settingFullName]
 
-    if (!setting.containsKey(property)) {
+    if (!setting.containsKey(key)) {
       return null
     }
 
-    return setting[property]
+    return setting[key]
   }
 
   void setType(Class type) {
@@ -139,7 +161,7 @@ class PersistentSetting {
         return "persistentsettings.type.invalid"
       }
 
-      def list = obj.getAdvanced()?.list
+      def list = obj.getStoredAdvanced()?.list
       if (list && list.size() > 0 && obj.value != null &&
           !list.contains(obj.value)) {
         return "persistentsettings.value.invalid"
@@ -194,6 +216,7 @@ class PersistentSetting {
       if (nullModuleSetting) {
         ps.setsValue(nullModuleSetting.getsValue())
         ps.setIsHidden(nullModuleSetting.getIsHidden())
+        ps.setAdvanced(nullModuleSetting.getAdvanced())
         def type = nullModuleSetting.getType()
         if (type) {
           ps.setType(type)
@@ -326,6 +349,8 @@ class PersistentSetting {
         ps.name = name
         ps.type = s.type
         ps.value = s.defaultValue
+        ps.storedAdvanced = getValueWithoutSideEffect(
+            getSettingFullName(name, moduleName), "advanced", config) as ConfigObject
         ps.module = moduleName ?: ((s.module instanceof String) ? s.module : null)
         ps.isHidden = s.hidden ?: false
         ps.save(failOnError: true, flush: true);
