@@ -39,9 +39,9 @@ class PersistentSetting {
   /**
    * A copy of the original value
    */
-  Object oValue = null
+  private Object oValue = null
 
-  Object value
+  private Object value
 
   public Object getValue() {
     if (name == null || sValue == null) return null
@@ -52,9 +52,19 @@ class PersistentSetting {
       def res = sValue.asType(type)
       return res
     } catch (Exception e) {
-      print "Exception while getting value of persistent setting with name='$name': ${e.message}"
+
+      def message = "Exception while getting value of persistent setting with name='$name': ${messageAndClassOfException(e)}"
+      if (e.getCause()) {
+        message += "(Cause: ${messageAndClassOfException(e.getCause())})"
+      }
+      print message
+
       return sValue
     }
+  }
+
+  private static String messageAndClassOfException(Throwable e) {
+    return "${e.message} (${e.getClass()})"
   }
 
   public Class resolveType() {
@@ -123,7 +133,7 @@ class PersistentSetting {
     return this.type
   }
 
-  private static def getValueWithoutSideEffect(String settingFullName, String key, def config = getConfig()){
+  private static def getValueWithoutSideEffect(String settingFullName, String key, def config = getConfig()) {
     if (!config.containsKey(settingFullName)) {
       return null
     }
@@ -142,22 +152,11 @@ class PersistentSetting {
 
   static constraints = {
 
-    name nullable: false, unique: 'module', validator: { val, obj ->
-      // name is invalid if getConfig() does not contain it
-    if (!PersistentSetting.getConfig().containsKey(getSettingFullName(val, obj.module))) {
-        return 'persistentsettings.name.invalid'
-      }
-      return true
-    }
+    name nullable: false, unique: 'module'
 
-    value nullable: true, bindable: true, validator: { val, obj ->
-      def configFullName = getSettingFullName(obj.name, obj.module)
-      if (!PersistentSetting.getConfig().containsKey(configFullName)) {
-        return 'name.invalid'
-      }
+    value nullable: true, bindable: true, validator: { val, PersistentSetting obj ->
 
-      def s = PersistentSetting.getConfig()[configFullName]
-      if (obj.oValue != null && obj.oValue.getClass() != s.type) {
+      if (obj.value != null && obj.value.getClass() != obj.resolveType()) {
         return "persistentsettings.type.invalid"
       }
 
@@ -168,8 +167,12 @@ class PersistentSetting {
       }
 
       // Calling custom validator
-      if (s.validator != [:]) {
-        return s.validator.call(val)
+      def configFullName = getSettingFullName(obj.name, obj.module)
+      if (PersistentSetting.getConfig().containsKey(configFullName)) {
+        def s = PersistentSetting.getConfig()[configFullName]
+        if (s.validator != [:]) {
+          return s.validator.call(val)
+        }
       }
       return true
     }
@@ -178,7 +181,7 @@ class PersistentSetting {
 
     isHidden nullable: true
     module nullable: true
-    type nullable:true
+    type nullable: true
   }
 
   static List<PersistentSetting> firstCleanBootstrap() {

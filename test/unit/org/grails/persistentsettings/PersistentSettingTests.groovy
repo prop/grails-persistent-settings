@@ -1,9 +1,7 @@
 package org.grails.persistentsettings
 
 import grails.util.Environment
-import grails.test.*
 import org.codehaus.groovy.grails.commons.ConfigurationHolder as CH
-
 
 class PersistentSettingTests extends GrailsUnitTestCase {
   def testConfig = new ConfigSlurper().parse(new File('grails-app/conf/TestConfig.groovy').toURL())
@@ -55,11 +53,12 @@ class PersistentSettingTests extends GrailsUnitTestCase {
     mockForConstraintsTests(PersistentSetting, testInstances)
     def item = new PersistentSetting();
 
-    item.name = "someInvalidName";
+    item.name = null;
     item.value = "somevalue";
+    item.type = String.class;
 
     assertFalse item.validate()
-    assertEquals item.errors['name'], "persistentsettings.name.invalid"
+    assertEquals item.errors['name'], "nullable"
 
     item = new PersistentSetting();
     item.name = "foo";
