@@ -1,6 +1,7 @@
 package org.grails.persistentsettings
 
 import grails.util.Environment
+import grails.test.*
 import org.codehaus.groovy.grails.commons.ConfigurationHolder as CH
 
 class PersistentSettingTests extends GrailsUnitTestCase {
