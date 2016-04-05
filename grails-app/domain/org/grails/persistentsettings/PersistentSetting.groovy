@@ -331,7 +331,10 @@ class PersistentSetting {
     }
 
     def configs = getConfig()
-    doBootstrap(configs)
+    List<PersistentSetting> loadedPs = doBootstrap(configs)
+
+    def loadedPsNames = loadedPs.collect { it.name }
+    updateTypeOfExistingPs(configs.collect { k, v -> k } - loadedPsNames, configs)
   }
 
   protected static List<PersistentSetting> doBootstrap(configs, String moduleName = null) {
@@ -343,7 +346,11 @@ class PersistentSetting {
       it.module == moduleName
     })
 
-    (configs.collect { k, v -> k } - allPs.collect { it.name }).each {
+    def persistentPsNames = allPs.collect { it.name }
+    def loadingPsNames = configs.collect { k, v -> k }
+
+    def newPsNames = loadingPsNames - persistentPsNames
+    newPsNames.each {
       try {
         def s = configs[it]
 
@@ -364,6 +371,28 @@ class PersistentSetting {
     }
 
     return created
+  }
+
+  private static List<PersistentSetting> updateTypeOfExistingPs(List psNamesForTypeUpdate, configs) {
+    List<PersistentSetting> updatedTypePs = []
+
+    psNamesForTypeUpdate.each {
+      PersistentSetting foundSettig = PersistentSetting.findByNameAndModuleIsNull(it)
+
+      def confType = configs[it].type
+
+      if (foundSettig.getValue() == null || foundSettig && confType &&
+          confType.isAssignableFrom(foundSettig.getValue().getClass())) {
+        foundSettig.type = confType
+        updatedTypePs.add(foundSettig)
+      } else {
+        foundSettig.errors.allErrors.each {
+          println it
+        }
+      }
+    }
+
+    return updatedTypePs
   }
 
   static Object getValue(String name, String module = null) {
