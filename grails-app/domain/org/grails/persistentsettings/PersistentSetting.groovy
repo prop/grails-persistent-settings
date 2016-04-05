@@ -346,11 +346,7 @@ class PersistentSetting {
       it.module == moduleName
     })
 
-    def persistentPsNames = allPs.collect { it.name }
-    def loadingPsNames = configs.collect { k, v -> k }
-
-    def newPsNames = loadingPsNames - persistentPsNames
-    newPsNames.each {
+    (configs.collect { k, v -> k } - allPs.collect { it.name }).each {
       try {
         def s = configs[it]
 
