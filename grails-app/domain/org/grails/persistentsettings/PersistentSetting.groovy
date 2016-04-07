@@ -375,13 +375,14 @@ class PersistentSetting {
     psNamesForTypeUpdate.each {
       PersistentSetting foundSettig = PersistentSetting.findByNameAndModuleIsNull(it)
 
-      def confType = configs[it].type
+      def oldType = foundSettig.getType()
 
-      if (foundSettig.getValue() == null || foundSettig && confType &&
-          confType.isAssignableFrom(foundSettig.getValue().getClass())) {
-        foundSettig.type = confType
+      foundSettig.type = configs[it].type
+      foundSettig.validate()
+      if (!foundSettig.hasErrors()) {
         updatedTypePs.add(foundSettig)
       } else {
+        foundSettig.type = oldType
         foundSettig.errors.allErrors.each {
           println it
         }
