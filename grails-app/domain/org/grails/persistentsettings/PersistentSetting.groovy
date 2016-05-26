@@ -18,7 +18,7 @@ class PersistentSetting {
 
   ConfigObject storedAdvanced
 
-  private Class type
+  String type
 
   String module
   private static final String MODULE_NAME_SEPARATOR = ':'
@@ -70,7 +70,8 @@ class PersistentSetting {
   public Class resolveType() {
     def type = (Class) getValueWithoutSideEffect(getSettingFullName(name, module), "type")
     if (!type) {
-      type = this.type
+      type = Class.forName(this.type, true,
+          Thread.currentThread().contextClassLoader)
     }
     type
   }
@@ -87,7 +88,7 @@ class PersistentSetting {
     sort 'name'
     cache true
     storedAdvanced type: SerializableConfigObjectUserType, class: ConfigObject, nullable: true, column: 'advanced'
-    type type: ClassFullName2VarcharUserType, class: String, nullable: true
+    type nullable: true
   }
 
   String getPropertyName() {
@@ -129,10 +130,6 @@ class PersistentSetting {
     this.storedAdvanced = advanced
   }
 
-  Class getType() {
-    return this.type
-  }
-
   private static def getValueWithoutSideEffect(String settingFullName, String key, def config = getConfig()) {
     if (!config.containsKey(settingFullName)) {
       return null
@@ -144,10 +141,6 @@ class PersistentSetting {
     }
 
     return setting[key]
-  }
-
-  void setType(Class type) {
-    this.type = type
   }
 
   static constraints = {
@@ -184,6 +177,7 @@ class PersistentSetting {
     type nullable: true
   }
 
+  @Deprecated
   static List<PersistentSetting> firstCleanBootstrap() {
     List<PersistentSetting> bootstrapped = doBootstrap(getConfig())
 
@@ -353,7 +347,7 @@ class PersistentSetting {
         def name = it
         PersistentSetting ps = new PersistentSetting()
         ps.name = name
-        ps.type = s.type
+        ps.type = s.type?.toString()
         ps.value = s.defaultValue
         ps.storedAdvanced = getValueWithoutSideEffect(
             getSettingFullName(name, moduleName), "advanced", config) as ConfigObject
@@ -377,7 +371,7 @@ class PersistentSetting {
 
       def oldType = foundSettig.getType()
 
-      foundSettig.type = configs[it].type
+      foundSettig.type = configs[it].type?.toString()
       foundSettig.validate()
       if (!foundSettig.hasErrors()) {
         updatedTypePs.add(foundSettig)

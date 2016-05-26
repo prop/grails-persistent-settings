@@ -1,6 +1,6 @@
 class PersistentSettingsGrailsPlugin {
     // the plugin version
-    def version = "0.9.6-SNAPSHOT"
+    def version = "0.9.7-SNAPSHOT"
     // the version or versions of Grails the plugin is designed for
     def grailsVersion = "1.3.7 > *"
     // the other plugins this plugin depends on
