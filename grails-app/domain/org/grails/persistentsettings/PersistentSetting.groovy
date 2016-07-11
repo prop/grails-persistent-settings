@@ -347,7 +347,7 @@ class PersistentSetting {
         def name = it
         PersistentSetting ps = new PersistentSetting()
         ps.name = name
-        ps.type = s.type?.toString()
+        ps.type = s.type?.getName()
         ps.value = s.defaultValue
         ps.storedAdvanced = getValueWithoutSideEffect(
             getSettingFullName(name, moduleName), "advanced", config) as ConfigObject
@@ -371,7 +371,7 @@ class PersistentSetting {
 
       def oldType = foundSettig.getType()
 
-      foundSettig.type = configs[it].type?.toString()
+      foundSettig.type = configs[it].type?.getName()
       foundSettig.validate()
       if (!foundSettig.hasErrors()) {
         updatedTypePs.add(foundSettig)
